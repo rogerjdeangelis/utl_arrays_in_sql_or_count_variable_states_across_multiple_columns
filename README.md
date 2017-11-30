@@ -1,0 +1,2 @@
+# utl_arrays_in_sql_or_count_variable_states_across_multiple_columns
+Arrays in SQL or Count Variable States Across Multiple Columns using Proc Sql  I am looking for a proc sql approach to summarize a set of variables that have only 3 states of Valid, Missing, or OOR (out of range) values and represented by 0, 1, or 2, respectively.  In the data set below, there are two groups with four variables that have 3 states (0,1, or 2).
