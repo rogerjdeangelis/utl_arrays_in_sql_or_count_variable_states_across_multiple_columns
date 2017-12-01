@@ -1,19 +1,16 @@
 Arrays in SQL or Count Variable States Across Multiple Columns using Proc Sql
 
+I am looking for a proc sql approach to summarize a set of variables that have only 3 states
+of Valid, Missing, or OOR (out of range) values and represented by 0, 1, or 2, respectively.
+
+In the data set below, there are two groups with four variables that have 3 states (0,1, or 2).
+
 github this post
 https://goo.gl/LBMjou
 https://github.com/rogerjdeangelis/utl_arrays_in_sql_or_count_variable_states_across_multiple_columns
 
 github do_over macro
 https://github.com/rogerjdeangelis/utl_sql_looping_or_using_arrays_in_sql
-
-
-
-I am looking for a proc sql approach to summarize a set of variables that have only 3 states
-of Valid, Missing, or OOR (out of range) values and represented by 0, 1, or 2, respectively.
-
-In the data set below, there are two groups with four variables that have 3 states (0,1, or 2).
-
 
 INPUT
 =====
@@ -25,7 +22,7 @@ INPUT
      1      1      0     0     0     1  | * for V1 in GRP 1 we have 4 (valids=0), 0 (missings=1) and 0 (oors=2)
      2      1      0     0     0     1  | so the result is
      3      1      0     1     0     1  |
-     4      1      0     1     0     1  |    GRP  COLUMN1   VALID_11   MISS_12   OOR_13
+     4      1      0     1     0     1  |    GRP  COLUMN      VALID      MISS      OOR
                                         |
      5      2      1     1     0     2  |     1     V1          4         0         0
      6      2      1     1     0     2  |     1     V2          2         2         0
@@ -36,44 +33,70 @@ INPUT
 PROCESS (all the code)
 =======================
 
-  * fat dataset - array in sql;
   proc sql;
     create
       table want1 as
-    select
-       grp
        %array(vs,values=1-4)
-      ,%do_over(vs,phrase=
-         "v?" as column? %str(,)
-          sum(v? = 0) as  valid_?1 %str(,)
-          sum(v? = 1) as   miss_?2 %str(,)
-          sum(v? = 2) as    oor_?3
-         ,between=comma
+       %do_over(vs,phrase=
+         select
+            grp %str(,)
+            "v?" as column  %str(,)
+            sum(v? = 0) as  valid %str(,)
+            sum(v? = 1) as   miss %str(,)
+            sum(v? = 2) as    oor
+         from  have
+         group by grp
+         ,between=union
        )
-    from
-       have
-    group
-       by grp
   ;quit;
 
-  * may not need to do this;
-  * this does the transpose;
 
-  proc sql;
-    create
-       table want2 as
-         %array(vs,values=1-4)
-         %do_over(vs,phrase=%str(
-         select
-             grp
-            ,column? as column
-            ,valid_?1 as valid
-            ,miss_?2 as mis
-            ,oor_?3 as oor
-         from
-            want union))
-         select * from sasuser.empty(obs=0) * null sql table
-    ;quit;
+   * do over generates this code;
+   select
+       grp
+      , "v1" as column
+      , sum(v1 = 0) as valid
+      , sum(v1 = 1) as miss
+      , sum(v1 = 2) as oor
+   from
+      have
+   group
+      by grp
+   union
+   select
+       grp
+      , "v2" as column
+      , sum(v2 = 0) as valid
+      , sum(v2 = 1) as miss
+      , sum(v2 = 2) as oor
+   from
+      have
+   group
+      by grp
+   union
+   select
+       grp
+      , "v3" as column
+      , sum(v3 = 0) as valid
+      , sum(v3 = 1) as miss
+      , sum(v3 = 2) as oor
+   from
+      have
+   group
+      by grp
+   union
+   select
+       grp
+      , "v4" as column
+      , sum(v4 = 0) as valid
+      , sum(v4 = 1) as miss
+      , sum(v4 = 2) as oor
+   from
+      have
+   group
+      by grp
+   union
+
 
 
 OUTPUT
@@ -92,38 +115,6 @@ OUTPUT
      2       v2        0       2      2
      2       v3        2       0      2
      2       v4        0       0      4
-
-
-    WORK.WANT1 total obs=2
-
-    Obs   COLUMN1   VALID_11   MISS_12   OOR_13 ...  COLUMN4   VALID_41   MISS_42   OOR_43
-
-     1      v1          4         0         0   ...    v4          0         4         0
-     2      v1          0         4         0   ..     v4          0         0         4
-
-     -- CHARACTER --
-    COLUMN1             C    2       v1
-    COLUMN2             C    2       v2
-    COLUMN3             C    2       v3
-    COLUMN4             C    2       v4
-
-
-     -- NUMERIC --
-    VALID_11            N    8       4
-    MISS_12             N    8       0
-    OOR_13              N    8       0
-
-    VALID_21            N    8       2
-    MISS_22             N    8       2
-    OOR_23              N    8       0
-
-    VALID_31            N    8       4
-    MISS_32             N    8       0
-    OOR_33              N    8       0
-
-    VALID_41            N    8       0
-    MISS_42             N    8       4
-    OOR_43              N    8       0
 
 
 https://goo.gl/XAYQoz
@@ -160,42 +151,24 @@ run;quit;
 
 ;
 
-  * fat dataset;
   proc sql;
     create
       table want1 as
-    select
-       grp
        %array(vs,values=1-4)
-      ,%do_over(vs,phrase=
-         "v?" as column? %str(,)
-          sum(v? = 0) as  valid_?1 %str(,)
-          sum(v? = 1) as   miss_?2 %str(,)
-          sum(v? = 2) as    oor_?3
-         ,between=comma
+       %do_over(vs,phrase=
+         select
+           grp %str(,)
+           "v?" as column  %str(,)
+           sum(v? = 0) as  valid %str(,)
+           sum(v? = 1) as   miss %str(,)
+           sum(v? = 2) as    oor
+         from  have
+         group by grp
+         ,between=union
        )
-    from
-       have
-    group
-       by grp
   ;quit;
 
-  * this does the transpose(may not need to do this);
-  proc sql;
-    create
-       table want2 as
-         %array(vs,values=1-4)
-         %do_over(vs,phrase=%str(
-         select
-             grp
-            ,column? as column
-            ,valid_?1 as valid
-            ,miss_?2 as mis
-            ,oor_?3 as oor
-         from
-            want union))
 
-         select * from sasuser.empty(obs=0)
-    ;quit;
+
 
 
